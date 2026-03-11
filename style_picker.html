@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Style Picker — YouTube Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #090910;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 32px 48px 18px;
+      border-bottom: 1px solid #1a1a28;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 20px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+    header p { color: #555; font-size: 13px; margin-top: 5px; max-width: 500px; }
+    .img-status {
+      font-size: 11.5px;
+      color: #444;
+      text-align: right;
+      margin-top: 4px;
+    }
+    .img-status.loading { color: #666; }
+    .img-status.done    { color: #4cd964; }
+    .img-status.failed  { color: #888; }
+
+    .container { padding: 32px 48px 0; max-width: 1260px; }
+
+    .section { margin-bottom: 44px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #444;
+      margin-bottom: 14px;
+    }
+
+    /* ── Style cards ─────────────────────────── */
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .style-card {
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      background: #0e0e1c;
+      position: relative;
+    }
+    .style-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
+    .style-card.selected {
+      border-color: #ffffff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 12px 32px rgba(0,0,0,0.5);
+    }
+
+    /* Image preview area */
+    .card-preview {
+      width: 100%;
+      height: 130px;
+      background-size: cover;
+      background-position: center top;
+      position: relative;
+      transition: opacity 0.4s;
+    }
+    /* Fade from image into dark card body */
+    .card-preview::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 40px;
+      background: linear-gradient(to bottom, transparent, #0e0e1c);
+    }
+    /* Loading shimmer */
+    .card-preview.shimmer {
+      background-image: none !important;
+      background: linear-gradient(90deg, #111120 25%, #1a1a30 50%, #111120 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Card body */
+    .card-body {
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card-row1 { display: flex; align-items: center; gap: 7px; }
+    .style-icon { font-size: 18px; flex-shrink: 0; }
+    .style-name { font-size: 14px; font-weight: 600; color: #fff; }
+
+    .style-desc { font-size: 11.5px; color: #888; line-height: 1.45; }
+
+    .style-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 100px;
+      background: #1c1c30;
+      color: #777;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 2px;
+    }
+    .style-link {
+      font-size: 10.5px;
+      color: #555;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .style-link:hover { color: #aaa; }
+    .preset-badge {
+      font-size: 9.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #161626;
+      color: #444;
+      font-family: 'SF Mono', monospace;
+    }
+
+    .checkmark {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #000;
+      font-weight: 700;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .style-card.selected .checkmark { display: flex; }
+
+    /* ── Color theme cards ───────────────────── */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .theme-card {
+      border-radius: 10px;
+      padding: 11px 10px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.15s;
+      background: #111120;
+    }
+    .theme-card:hover { border-color: #2a2a40; transform: translateY(-1px); }
+    .theme-card.selected { border-color: #fff; }
+
+    .swatches {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 8px;
+    }
+    .swatch {
+      flex: 1;
+      height: 26px;
+      border-radius: 4px;
+    }
+    .theme-name {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #888;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .theme-card.selected .theme-name { color: #fff; }
+
+    /* ── Bottom bar ──────────────────────────── */
+    .bottom-padding { height: 76px; }
+
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(9, 9, 16, 0.96);
+      border-top: 1px solid #1a1a28;
+      padding: 13px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .selection-info { display: flex; flex-direction: column; gap: 3px; }
+    .selection-label { font-size: 13px; color: #fff; }
+    .selection-label .dim { color: #555; margin-right: 2px; }
+    .selection-code {
+      font-family: 'SF Mono', monospace;
+      font-size: 11px;
+      color: #6b7fe8;
+    }
+    .no-sel { color: #444; font-size: 13px; }
+
+    .copy-btn {
+      background: #fff;
+      color: #000;
+      border: none;
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: #e8e8e8; }
+    .copy-btn.copied { background: #4cd964; }
+    .copy-btn:disabled { opacity: 0.3; cursor: default; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Image Style Picker</h1>
+    <p>Choose a style and color theme → click <strong>Copy Settings</strong> → paste to Claude.</p>
+  </div>
+  <div id="imgStatus" class="img-status loading">Loading style previews…</div>
+</header>
+
+<div class="container">
+
+  <div class="section">
+    <div class="section-title">Image Style &nbsp;·&nbsp; pick one</div>
+    <div class="style-grid" id="styleGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Color Theme &nbsp;·&nbsp; pick one</div>
+    <div class="theme-grid" id="themeGrid"></div>
+  </div>
+
+  <div class="bottom-padding"></div>
+</div>
+
+<div class="bottom-bar">
+  <div class="selection-info">
+    <div id="selLabel" class="no-sel">Select a style and color theme above</div>
+    <div id="selCode" class="selection-code"></div>
+  </div>
+  <button class="copy-btn" id="copyBtn" onclick="copySettings()" disabled>Copy Settings</button>
+</div>
+
+<script>
+const STYLES = [
+  {
+    id: 'cinematic',
+    name: 'Cinematic',
+    icon: '🎬',
+    tags: ['Dramatic', 'Film-like', 'Widescreen'],
+    desc: 'Epic film lighting, depth of field, professional cinematography.',
+    bg: 'linear-gradient(145deg, #0b1d3a 0%, #1a3a6e 60%, #0d2240 100%)',
+    lexica: 'https://lexica.art/?q=cinematic+dramatic+lighting+film',
+    query: 'cinematic dramatic lighting film scene',
+  },
+  {
+    id: 'photographic',
+    name: 'Photographic',
+    icon: '📷',
+    tags: ['Realistic', 'Sharp', 'Natural'],
+    desc: 'True-to-life photography with crisp detail and natural lighting.',
+    bg: 'linear-gradient(145deg, #1c2e30 0%, #2d4a4e 60%, #182628 100%)',
+    lexica: 'https://lexica.art/?q=photographic+realistic+portrait+natural+light',
+    query: 'photographic portrait natural lighting realistic',
+  },
+  {
+    id: 'analog-film',
+    name: 'Analog Film',
+    icon: '🎞️',
+    tags: ['Vintage', 'Grain', 'Nostalgic'],
+    desc: 'Classic 35mm film grain and warm tones. Timeless and emotionally resonant.',
+    bg: 'linear-gradient(145deg, #3d1c02 0%, #7a4010 60%, #562c07 100%)',
+    lexica: 'https://lexica.art/?q=analog+film+35mm+grain+vintage',
+    query: 'analog film 35mm grain vintage photograph',
+  },
+  {
+    id: 'digital-art',
+    name: 'Digital Art',
+    icon: '✦',
+    tags: ['Illustrated', 'Vibrant', 'Clean'],
+    desc: 'Polished digital illustration with rich, saturated colors.',
+    bg: 'linear-gradient(145deg, #2b0f5e 0%, #6b3fa0 60%, #8c28aa 100%)',
+    lexica: 'https://lexica.art/?q=digital+art+illustration+vibrant',
+    query: 'digital art illustration vibrant colorful',
+  },
+  {
+    id: 'fantasy-art',
+    name: 'Fantasy Art',
+    icon: '✨',
+    tags: ['Painterly', 'Ethereal', 'Mythical'],
+    desc: 'Painterly brushwork and magical atmosphere. Great for spiritual topics.',
+    bg: 'linear-gradient(145deg, #18082e 0%, #49106a 60%, #2c084a 100%)',
+    lexica: 'https://lexica.art/?q=fantasy+art+painterly+ethereal+magical',
+    query: 'fantasy art painterly ethereal magical landscape',
+  },
+  {
+    id: 'neon-punk',
+    name: 'Neon Punk',
+    icon: '⚡',
+    tags: ['Cyberpunk', 'Neon', 'Futuristic'],
+    desc: 'Electric neon colors and cyberpunk aesthetic. Bold and high-contrast.',
+    bg: 'linear-gradient(145deg, #080012 0%, #1c0040 55%, #3a0068 100%)',
+    lexica: 'https://lexica.art/?q=neon+punk+cyberpunk+electric',
+    query: 'neon cyberpunk city night electric lights',
+  },
+  {
+    id: 'comic-book',
+    name: 'Comic Book',
+    icon: '💥',
+    tags: ['Bold', 'Graphic', 'Pop Art'],
+    desc: 'Striking bold outlines and pop art energy.',
+    bg: 'linear-gradient(145deg, #1a0505 0%, #6b1a0a 55%, #9c2e10 100%)',
+    lexica: 'https://lexica.art/?q=comic+book+illustration+bold+pop+art',
+    query: 'comic book illustration bold outlines superhero',
+  },
+  {
+    id: 'enhance',
+    name: 'Hyper-Real',
+    icon: '🔍',
+    tags: ['Ultra Detail', 'Crisp', 'Photorealistic'],
+    desc: 'Maximum realism and fine detail. Highest visual fidelity.',
+    bg: 'linear-gradient(145deg, #0c0c18 0%, #1c1c2e 60%, #0f0f1a 100%)',
+    lexica: 'https://lexica.art/?q=hyperrealistic+ultra+detail+8k+photorealistic',
+    query: 'hyperrealistic ultra detailed photorealistic 8k portrait',
+  },
+];
+
+const THEMES = [
+  { id: 'dark_mysterious', name: 'Dark & Mysterious', colors: ['#0d1b2a','#1b2838','#4a4e69','#9a9cc0'], prompt: 'dark navy and charcoal, deep shadows, silver highlights, brooding mysterious atmosphere' },
+  { id: 'warm_golden',     name: 'Warm & Golden',     colors: ['#3a1500','#8b4513','#d4860a','#f0c040'], prompt: 'warm golden amber light, candlelight glow, copper and honey tones, warm cinematic' },
+  { id: 'ethereal',        name: 'Ethereal',           colors: ['#dce8f8','#b8cde8','#a89cc8','#ddd6f3'], prompt: 'soft white and pale blue, misty ethereal light, silver luminescence, dreamlike airy' },
+  { id: 'earth_forest',    name: 'Earth & Forest',     colors: ['#1b4332','#2d6a4f','#74a57f','#c3d5a0'], prompt: 'deep forest green, earthy brown and ochre, natural organic textures, grounded' },
+  { id: 'cosmic',          name: 'Cosmic',             colors: ['#0d0221','#190d3e','#5b2d8e','#a06cc0'], prompt: 'deep space indigo and violet, cosmic nebula tones, starlight, vast and infinite' },
+  { id: 'sunset',          name: 'Sunset',             colors: ['#7b1c1c','#c0392b','#e67e22','#f9ca24'], prompt: 'warm sunset orange and coral, rose gold, pink and amber sky tones, golden hour' },
+  { id: 'monochrome',      name: 'Monochrome',         colors: ['#0a0a0a','#333333','#888888','#f0f0f0'], prompt: 'black and white, high contrast monochrome, dramatic shadows and highlights, timeless' },
+];
+
+let selStyle = null;
+let selTheme = null;
+
+// ── Render ────────────────────────────────────────────────────────────
+
+function renderStyles() {
+  document.getElementById('styleGrid').innerHTML = STYLES.map(s => `
+    <div class="style-card" id="s-${s.id}" onclick="pickStyle('${s.id}')">
+      <div class="checkmark">✓</div>
+      <div class="card-preview shimmer" id="preview-${s.id}" style="background:${s.bg}"></div>
+      <div class="card-body">
+        <div class="card-row1">
+          <span class="style-icon">${s.icon}</span>
+          <span class="style-name">${s.name}</span>
+        </div>
+        <div class="style-desc">${s.desc}</div>
+        <div class="style-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        <div class="card-footer">
+          <a class="style-link" href="${s.lexica}" target="_blank" onclick="event.stopPropagation()">View more examples →</a>
+          <span class="preset-badge">${s.id}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderThemes() {
+  document.getElementById('themeGrid').innerHTML = THEMES.map(t => `
+    <div class="theme-card" id="t-${t.id}" onclick="pickTheme('${t.id}')">
+      <div class="swatches">${t.colors.map(c=>`<div class="swatch" style="background:${c}"></div>`).join('')}</div>
+      <div class="theme-name">${t.name}</div>
+    </div>
+  `).join('');
+}
+
+// ── Image loading from Lexica API ─────────────────────────────────────
+
+async function loadStyleImages() {
+  const status = document.getElementById('imgStatus');
+  let loaded = 0;
+  let failed = 0;
+
+  const fetches = STYLES.map(async (s) => {
+    const preview = document.getElementById(`preview-${s.id}`);
+    try {
+      const res = await fetch(
+        `https://lexica.art/api/v1/search?q=${encodeURIComponent(s.query)}`,
+        { mode: 'cors' }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const imgUrl = data.images?.[0]?.srcSmall || data.images?.[0]?.src;
+      if (!imgUrl) throw new Error('no image');
+
+      // Preload then reveal
+      const img = new Image();
+      img.onload = () => {
+        preview.style.backgroundImage = `url('${imgUrl}')`;
+        preview.classList.remove('shimmer');
+        loaded++;
+        updateStatus(loaded, failed);
+      };
+      img.onerror = () => {
+        fallback(preview, s.bg);
+        failed++;
+        updateStatus(loaded, failed);
+      };
+      img.src = imgUrl;
+    } catch (e) {
+      fallback(preview, s.bg);
+      failed++;
+      updateStatus(loaded, failed);
+    }
+  });
+
+  await Promise.allSettled(fetches);
+}
+
+function fallback(previewEl, gradient) {
+  previewEl.style.background = gradient;
+  previewEl.classList.remove('shimmer');
+}
+
+function updateStatus(loaded, failed) {
+  const status = document.getElementById('imgStatus');
+  const total = STYLES.length;
+  const done = loaded + failed;
+  if (done < total) {
+    status.className = 'img-status loading';
+    status.textContent = `Loading previews… ${done}/${total}`;
+  } else if (loaded === total) {
+    status.className = 'img-status done';
+    status.textContent = `✓ All ${total} previews loaded`;
+  } else if (loaded === 0) {
+    status.className = 'img-status failed';
+    status.textContent = 'Preview images unavailable — click "View more examples" on each card';
+  } else {
+    status.className = 'img-status done';
+    status.textContent = `✓ ${loaded}/${total} previews loaded`;
+  }
+}
+
+// ── Selection ─────────────────────────────────────────────────────────
+
+function pickStyle(id) {
+  document.querySelectorAll('.style-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`s-${id}`).classList.add('selected');
+  selStyle = STYLES.find(s => s.id === id);
+  updateBar();
+}
+
+function pickTheme(id) {
+  document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`t-${id}`).classList.add('selected');
+  selTheme = THEMES.find(t => t.id === id);
+  updateBar();
+}
+
+function updateBar() {
+  const label = document.getElementById('selLabel');
+  const code  = document.getElementById('selCode');
+  const btn   = document.getElementById('copyBtn');
+
+  if (!selStyle && !selTheme) {
+    label.className = 'no-sel';
+    label.innerHTML = 'Select a style and color theme above';
+    code.textContent = '';
+    btn.disabled = true;
+    return;
+  }
+
+  const sName = selStyle ? selStyle.name : '—';
+  const tName = selTheme ? selTheme.name : '—';
+  label.className = 'selection-label';
+  label.innerHTML = `<span class="dim">Style</span> ${sName} &nbsp;·&nbsp; <span class="dim">Theme</span> ${tName}`;
+  code.textContent = selStyle && selTheme
+    ? `Tell Claude → style=${selStyle.id}, theme=${selTheme.id}`
+    : 'Select both style and theme to copy';
+  btn.disabled = !(selStyle && selTheme);
+}
+
+function copySettings() {
+  const text = `style=${selStyle.id}, theme=${selTheme.id}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Settings'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+renderStyles();
+renderThemes();
+loadStyleImages();
+</script>
+</body>
+</html>

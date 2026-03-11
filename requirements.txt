@@ -1,0 +1,25 @@
+# YouTube scanning
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+youtube-transcript-api>=0.6.2
+yt-dlp>=2024.1.0
+
+# Google Sheets export
+gspread>=6.0.0
+
+# AI agents
+anthropic>=0.34.0
+
+# Voiceover (ElevenLabs) + HTTP
+requests>=2.31.0
+
+# Video rendering (Pillow draws frames; ffmpeg encodes — install ffmpeg separately)
+Pillow>=10.0.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# System: also requires ffmpeg installed separately
+# macOS:  brew install ffmpeg
+# Ubuntu: sudo apt install ffmpeg
